@@ -8,3 +8,8 @@ CONFIG_FILE=./forcing.config
 chmod 755 $CONFIG_FILE
 . $CONFIG_FILE
 
+
+# Create a .netrc file in your home directory
+touch ${HOME}/.netrc
+echo "machine urs.earthdata.nasa.gov login $USER_NAME password $PASSWORD" > ${HOME}/.netrc
+chmod 0600 ${HOME}/.netrc
