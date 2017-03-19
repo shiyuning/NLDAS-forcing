@@ -13,3 +13,7 @@ chmod 755 $CONFIG_FILE
 touch ${HOME}/.netrc
 echo "machine urs.earthdata.nasa.gov login $USER_NAME password $PASSWORD" > ${HOME}/.netrc
 chmod 0600 ${HOME}/.netrc
+
+# Create a cookie file
+# This file will be used to persist sessions across calls to Wget or Curl
+touch ${HOME}/.urs_cookies
