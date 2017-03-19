@@ -3,6 +3,25 @@
 # Bash script to create meteorological forcing from NLDAS-2 forcing data
 # Author: Yuning Shi (yshi.at.psu.edu)
 
+IsLeapYear()
+{
+    year=$1
+
+    if [ `expr $year % 400` -eq 0 ]; then
+        echo "$year is a Leap year"
+    elif [ `expr $year % 100` -eq 0 ]; then
+        echo "$year is not a Leap year"
+    elif [ `expr $year % 4` -eq 0 ]; then
+        echo "$year is not a Leap year"
+    else
+        echo "$year is not a leap year"
+    fi
+}
+
+##########################
+# Main script starts here
+##########################
+
 # Read configuration file
 CONFIG_FILE=./forcing.config
 chmod 755 $CONFIG_FILE
