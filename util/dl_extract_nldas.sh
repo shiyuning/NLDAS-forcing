@@ -41,7 +41,7 @@ do
             for x in $files
               do
                 echo $x
-                ./wgrib -v $x | egrep "(:APCP:|:SPFH:|:TMP:|:UGRD:|:VGRD:|:DLWRF:|:DSWRF:|:PRES:sfc:)" | ./wgrib -i -nh $x -o "$x.dat"
+                ./util/wgrib -v $x | egrep "(:APCP:|:SPFH:|:TMP:|:UGRD:|:VGRD:|:DLWRF:|:DSWRF:|:PRES:sfc:)" | ./util/wgrib -i -nh $x -o "$x.dat" &>/dev/null 
             done
         fi
     fi

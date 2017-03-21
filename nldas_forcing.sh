@@ -19,3 +19,8 @@ touch ${HOME}/.urs_cookies
 
 # Run download script
 . ./util/dl_extract_nldas.sh download
+
+# Run extract script
+if [ "$EXTRACT" == "yes" ] ; then
+    . ./util/dl_extract_nldas.sh extract
+fi
