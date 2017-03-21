@@ -5,7 +5,7 @@
 
 # Read configuration file
 CONFIG_FILE=./forcing.config
-chmod 755 $CONFIG_FILE
+chmod 700 $CONFIG_FILE
 . $CONFIG_FILE
 
 if [ $START_YEAR -lt 1979 ] ; then
