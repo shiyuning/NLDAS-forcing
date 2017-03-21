@@ -18,4 +18,4 @@ chmod 0600 ${HOME}/.netrc
 touch ${HOME}/.urs_cookies
 
 # Run download script
-. ./src/dl_extract_nldas.sh download
+. ./util/dl_extract_nldas.sh download
