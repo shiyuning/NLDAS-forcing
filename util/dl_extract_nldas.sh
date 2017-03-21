@@ -30,7 +30,13 @@ do
     echo $cyear $cjday
 
     nof=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A$cyear*.002$ext 2>/dev/null | wc -l)
-    nof_avail=24
+    if [ $cyear -eq 1979 -a $cjday -eq 001 ] ; then
+        nof_avail=11
+    else
+        nof_avail=24
+    fi
+
+    echo $nof_avail
 
     if [ $nof -ne $nof_avail ] ; then
         if [ "$operation" == "download" ] ; then

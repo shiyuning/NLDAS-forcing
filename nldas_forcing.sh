@@ -8,6 +8,40 @@ CONFIG_FILE=./forcing.config
 chmod 755 $CONFIG_FILE
 . $CONFIG_FILE
 
+if [ $START_YEAR -lt 1979 ] ; then
+    echo
+    echo "Error: NLDAS-2 forcing data range from 01 Jan 1979 to present."
+    echo "Please specify a valid START_YEAR in forcing.config and try again."
+    echo
+    exit
+fi
+if [ $START_MONTH -lt 1 -o $START_MONTH -gt 12 ] ; then
+    echo
+    echo "Error: Please specify a valid START_MONTH in forcing.config and try again."
+    echo
+    exit
+fi
+if [ $END_YEAR -lt $START_YEAR ] ; then
+    echo
+    echo "Error: END_YEAR is smaller than START_YEAR."
+    echo "Please specify a valid END_YEAR in forcing.config and try again."
+    echo
+    exit
+fi
+if [ $END_MONTH -lt 1 -o $END_MONTH -gt 12 ] ; then
+    echo
+    echo "Error: Please specify a valid END_MONTH in forcing.config and try again."
+    echo
+    exit
+fi
+if [ $START_YEAR -eq $END_YEAR -a $END_MONTH -lt $START_MONTH ] ; then
+    echo
+    echo "Error: End date is earlier than start date."
+    echo "Please specify a valid END_MONTH in forcing.config and try again."
+    echo
+    exit
+fi
+
 # Create a .netrc file in your home directory
 touch ${HOME}/.netrc
 echo "machine urs.earthdata.nasa.gov login $USER_NAME password $PASSWORD" > ${HOME}/.netrc
@@ -23,4 +57,9 @@ touch ${HOME}/.urs_cookies
 # Run extract script
 if [ "$EXTRACT" == "yes" ] ; then
     . ./util/dl_extract_nldas.sh extract
+fi
+
+# Run read script
+if [ "$MODEL" != "no" ] ; then
+    ./util/read_nldas --start $start_date --end $end_date --lat 40.6125 --lon -78.1408 --model $MODEL
 fi
