@@ -31,3 +31,10 @@
 # Debug files
 *.dSYM/
 *.su
+
+# Data directory
+/Data/
+
+# Executable
+/util/wgrib
+/util/read_nldas
