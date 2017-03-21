@@ -6,8 +6,16 @@ Jul()
     date -d "$1-01-01 +$2 days -1 day" "+%Y-%m-%d";
 }
 
+operation=$1
+
 # File extension to download/convert
-ext=".grb"
+if [ "$operation" == "download" ]; then
+    ext=".grb"
+elif [ "$operation" == "extract" ] ; then
+    ext=".grb.dat"
+else
+    echo "ERROR!"
+fi
 
 # Loop through the years to download/convert data
 start_date="$START_YEAR-$(printf "%2.2d" "$START_MONTH")-01"
@@ -19,16 +27,25 @@ for (( d=0; d<=$nod; d++ ))
 do
     cyear=$(date -d "$start_date +$d days" "+%Y")
     cjday=$(date -d "$start_date +$d days" "+%j")
-    #cjday=${nod#"${nod%%[!0]*}"}
     echo $cyear $cjday
 
     nof=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A$cyear*.002$ext 2>/dev/null | wc -l)
     nof_avail=24
 
     if [ $nof -ne $nof_avail ] ; then
-        echo "Download data from $(Jul $cyear $cjday)..."
-        wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday
+        if [ "$operation" == "download" ] ; then
+            echo "Download data from $(Jul $cyear $cjday)..."
+            wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday
+        else
+            files=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A*.002*.grb | sort -d)
+            for x in $files
+              do
+                echo $x
+                ./wgrib -v $x | egrep "(:APCP:|:SPFH:|:TMP:|:UGRD:|:VGRD:|:DLWRF:|:DSWRF:|:PRES:sfc:)" | ./wgrib -i -nh $x -o "$x.dat"
+            done
+        fi
     fi
+
 done
 #for (( year=$START_YEAR; year<=$END_YEAR; year++ ))
 #do
