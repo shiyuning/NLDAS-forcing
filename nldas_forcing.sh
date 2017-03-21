@@ -3,6 +3,12 @@
 # Bash script to create meteorological forcing from NLDAS-2 forcing data
 # Author: Yuning Shi (yshi.at.psu.edu)
 
+echo "##############################################"
+echo "# NLDAS-forcing                              #"
+echo "# https://github.com/shiyuning/NLDAS-forcing #"
+echo "# Contact: Yuning Shi (yshi.at.psu.edu)      #"
+echo "##############################################"
+
 # Read configuration file
 CONFIG_FILE=./forcing.config
 chmod 700 $CONFIG_FILE
@@ -52,14 +58,24 @@ chmod 0600 ${HOME}/.netrc
 touch ${HOME}/.urs_cookies
 
 # Run download script
+echo
+echo "Download starts."
 . ./util/dl_extract_nldas.sh download
+echo "Download completed."
 
 # Run extract script
+echo
+echo "Interpretion starts."
 if [ "$EXTRACT" == "yes" ] ; then
     . ./util/dl_extract_nldas.sh extract
 fi
+echo "Interpretion completed."
 
 # Run read script
+echo
+echo "Generate forcing."
+echo
 if [ "$MODEL" != "no" ] ; then
     ./util/read_nldas --start $start_date --end $end_date --model $MODEL
 fi
+echo "Job completed."

@@ -21,13 +21,11 @@ fi
 start_date="$START_YEAR-$(printf "%2.2d" "$START_MONTH")-01"
 end_date=$(date -d "$END_YEAR-$(printf "%2.2d" "$END_MONTH")-01 +1 month -1 day" "+%Y-%m-%d")
 nod=$(( (`date -d $end_date +%s` - `date -d $start_date +%s`) / (24*3600) ))
-echo $start_date $end_date $nod
 
 for (( d=0; d<=$nod; d++ ))
 do
     cyear=$(date -d "$start_date +$d days" "+%Y")
     cjday=$(date -d "$start_date +$d days" "+%j")
-    echo $cyear $cjday
 
     nof=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A$cyear*.002$ext 2>/dev/null | wc -l)
     if [ $cyear -eq 1979 -a $cjday -eq 001 ] ; then
@@ -36,17 +34,15 @@ do
         nof_avail=24
     fi
 
-    echo $nof_avail
-
     if [ $nof -ne $nof_avail ] ; then
         if [ "$operation" == "download" ] ; then
-            echo "Download data from $(Jul $cyear $cjday)..."
+            echo "Downloading $(Jul $cyear $cjday) data..."
             wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday &>/dev/null
         else
+            echo "Interpreting $(Jul $cyear $cjday) data..."
             files=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A*.002*.grb | sort -d)
             for x in $files
               do
-                echo $x
                 ./util/wgrib -v $x | egrep "(:APCP:|:SPFH:|:TMP:|:UGRD:|:VGRD:|:DLWRF:|:DSWRF:|:PRES:sfc:)" | ./util/wgrib -i -nh $x -o "$x.dat" &>/dev/null 
             done
         fi
