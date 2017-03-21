@@ -41,7 +41,7 @@ do
     if [ $nof -ne $nof_avail ] ; then
         if [ "$operation" == "download" ] ; then
             echo "Download data from $(Jul $cyear $cjday)..."
-            wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday
+            wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday &>/dev/null
         else
             files=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A*.002*.grb | sort -d)
             for x in $files

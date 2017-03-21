@@ -61,5 +61,5 @@ fi
 
 # Run read script
 if [ "$MODEL" != "no" ] ; then
-    ./util/read_nldas --start $start_date --end $end_date --lat 40.6125 --lon -78.1408 --model $MODEL
+    ./util/read_nldas --start $start_date --end $end_date --model $MODEL
 fi
