@@ -22,65 +22,8 @@
 
 enum vrbl {TMP, SPFH, PRES, UGRD, VGRD, DLWRF, APCP, DSWRF};
 
-int Readable (char *cmdstr)
-{
-    int             readable;
-    int             i;
-    char            ch;
-
-    for (i = 0; i < strlen (cmdstr); i++)
-    {
-        if (cmdstr[i] == 32 || cmdstr[i] == '\t' || cmdstr[i] == ' ')
-        {
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    if (i >= strlen (cmdstr))
-    {
-        readable = 0;
-    }
-    else
-    {
-        ch = cmdstr[i];
-
-        if (ch != '#' && ch != '\n' && ch != '\0' && ch != '\r')
-        {
-            readable = 1;
-        }
-        else
-        {
-            readable = 0;
-        }
-    }
-
-    return (readable);
-}
-
-void NextLine (FILE *fid, char *cmdstr, int *lno)
-{
-    /*
-     * Read a non-blank line into cmdstr
-     */
-    strcpy (cmdstr, "\0");
-
-    while (!Readable (cmdstr))
-    {
-        if (fgets (cmdstr, MAXSTRING, fid) == NULL)
-        {
-            strcpy (cmdstr, "EOF");
-            break;
-        }
-        else
-        {
-            (*lno)++;
-        }
-    }
-}
+int Readable (char *cmdstr);
+void NextLine (FILE *fid, char *cmdstr, int *lno);
 
 int main (int argc, char *argv[])
 {
@@ -94,6 +37,7 @@ int main (int argc, char *argv[])
     struct tm       timeinfo_start = { 0, 0, 0, 0, 0, 0 };
     struct tm       timeinfo_end = { 0, 0, 0, 0, 0, 0 };
     struct tm      *timeinfo;
+    char            buffer[MAXSTRING];
 
     int             i, k;
     double          lon[MAXLOC], lat[MAXLOC];
@@ -101,8 +45,8 @@ int main (int argc, char *argv[])
     FILE           *loc_file;
     int             match;
     int             lno = 0;
-    char            cmdstr[1024];
-    char            lon_char[1024], lat_char[1014];
+    char            cmdstr[MAXSTRING];
+    char            lon_char[MAXSTRING], lat_char[MAXSTRING];
 
     double          prcp;
     double          tmp;
@@ -255,16 +199,20 @@ int main (int argc, char *argv[])
 
     for (k = 0; k < counter; k++)
     {
-        printf ("Generate forcing for %lf N, %lf W, "
-            "from %2.2d/%2.2d/%4.4d to %2.2d/%2.2d/%4.4d\n", lat[k], lon[k],
-            timeinfo_start.tm_mon + 1, timeinfo_start.tm_mday,
-            timeinfo_start.tm_year + 1900,
-            timeinfo_end.tm_mon + 1, timeinfo_end.tm_mday,
-            timeinfo_end.tm_year + 1900);
         if (mode == PIHM)
-            printf (" for PIHM.\n\n");
+        {
+            printf ("Generate PIHM forcing ");
+        }
         else if (mode == CYCLES)
-            printf (" for Cycles.\n\n");
+        {
+            printf ("Generate Cycles forcing ");
+        }
+
+        printf ("for %lf N, %lf W, ", lat[k], lon[k]);
+        strftime (buffer, 11, "%m-%d-%Y", &timeinfo_start);
+        printf ("from %s ", buffer);
+        strftime (buffer, 11, "%m-%d-%Y", &timeinfo_end);
+        printf ("to %s\n", buffer);
 
         /* Open output file */
         sprintf (filename, "met%.4lfNx%.4lfW.txt", lat[k], -lon[k]);
@@ -399,9 +347,8 @@ int main (int argc, char *argv[])
         
                 if (mode == PIHM)
                 {
-                    fprintf (output_file, "%4.4d-%2.2d-%2.2d %2.2d:00\t",
-                        timeinfo->tm_year + 1900, timeinfo->tm_mon + 1,
-                        timeinfo->tm_mday, timeinfo->tm_hour);
+                    strftime (buffer, 17, "%Y-%m-%d %H:%M", timeinfo);
+                    fprintf (output_file, "%s\t", buffer);
                     fprintf (output_file, "%-11.8lf\t", prcp);
                     fprintf (output_file, "%-6.2lf\t", tmp);
                     fprintf (output_file, "%-5.2lf\t", w / w_s * 100.0);
@@ -432,3 +379,64 @@ int main (int argc, char *argv[])
 
     return (EXIT_SUCCESS);
 }
+
+int Readable (char *cmdstr)
+{
+    int             readable;
+    int             i;
+    char            ch;
+
+    for (i = 0; i < strlen (cmdstr); i++)
+    {
+        if (cmdstr[i] == 32 || cmdstr[i] == '\t' || cmdstr[i] == ' ')
+        {
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (i >= strlen (cmdstr))
+    {
+        readable = 0;
+    }
+    else
+    {
+        ch = cmdstr[i];
+
+        if (ch != '#' && ch != '\n' && ch != '\0' && ch != '\r')
+        {
+            readable = 1;
+        }
+        else
+        {
+            readable = 0;
+        }
+    }
+
+    return (readable);
+}
+
+void NextLine (FILE *fid, char *cmdstr, int *lno)
+{
+    /*
+     * Read a non-blank line into cmdstr
+     */
+    strcpy (cmdstr, "\0");
+
+    while (!Readable (cmdstr))
+    {
+        if (fgets (cmdstr, MAXSTRING, fid) == NULL)
+        {
+            strcpy (cmdstr, "EOF");
+            break;
+        }
+        else
+        {
+            (*lno)++;
+        }
+    }
+}
+
