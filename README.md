@@ -1,6 +1,6 @@
 # NLDAS-forcing [![Build Status](https://travis-ci.org/shiyuning/NLDAS-forcing.svg?branch=travis)](https://travis-ci.org/shiyuning/NLDAS-forcing)
 
-NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GESDISC archive, **interpret** NLDAS-2 grib data into regular binary files using [Wgrib](ftp://ftp.cpc.ncep.noaa.gov/wd51we/wgrib/wgrib.c), and **generate** meteorological forcing for MM-PIHM and Cycles models.
+NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GESDISC archive, **decode** NLDAS-2 grib data into regular binary files using [Wgrib](ftp://ftp.cpc.ncep.noaa.gov/wd51we/wgrib/wgrib.c), and **generate** meteorological forcing for MM-PIHM and Cycles models.
 
 ## NASA Earthdata login for data access
 NASA requires registration to access the GES DISC data.
@@ -20,7 +20,7 @@ Please follow [this link](https://wiki.earthdata.nasa.gov/display/EL/How+To+Regi
 3. Next, edit the configuration file `forcing.config`.
    Specify desired `START_YEAR`, `START_MONTH`, `END_YEAR`, and `END_MONTH`.
    Change `USERNAME` and `PASSWORD` to your Earthdata username and password.
-   If you just want to download the NLDAS-2 forcing data but do not want to interpret them into binary forms, set `EXTRACT` to `no`, otherwise, set to `yes`.
+   If you just want to download the NLDAS-2 forcing data but do not want to decode them into binary forms, set `DECODE` to `no`, otherwise, set to `yes`.
    If you don't want to generate forcing data for PIHM or Cycles, set `MODEL` to `no`, otherwise, choose from `PIHM` or `Cycles`.
 
 4. Then edit the location file `location.txt` to add your desired locations.

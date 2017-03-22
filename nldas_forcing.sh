@@ -66,7 +66,7 @@ echo "Download completed."
 # Run extract script
 echo
 echo "Interpretion starts."
-if [ "$EXTRACT" == "yes" ] ; then
+if [ "$DECODE" == "yes" ] ; then
     . ./util/dl_extract_nldas.sh extract
 fi
 echo "Interpretion completed."
