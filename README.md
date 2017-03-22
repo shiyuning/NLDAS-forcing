@@ -1,6 +1,6 @@
 # NLDAS-forcing [![Build Status](https://travis-ci.org/shiyuning/NLDAS-forcing.svg?branch=travis)](https://travis-ci.org/shiyuning/NLDAS-forcing)
 
-NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GESDISC archive, **decode** NLDAS-2 grib data into regular binary files using [Wgrib](ftp://ftp.cpc.ncep.noaa.gov/wd51we/wgrib/wgrib.c), and **generate** meteorological forcing for MM-PIHM and Cycles models.
+NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GES DISC archive, **decode** NLDAS-2 grib data into regular binary files using [Wgrib](ftp://ftp.cpc.ncep.noaa.gov/wd51we/wgrib/wgrib.c), and **generate** meteorological forcing for MM-PIHM and Cycles models.
 
 ## NASA Earthdata login for data access
 NASA requires registration to access the GES DISC data.
