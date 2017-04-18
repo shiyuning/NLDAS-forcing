@@ -55,6 +55,8 @@ int main (int argc, char *argv[])
     double          dlwrf;
     double          dswrf;
     double          pres;
+    double          avg_pres;
+    int             pres_counter;
     double	    rh;
     double          e_s, w_s, w;
     double	    tx, tn;
@@ -73,6 +75,7 @@ int main (int argc, char *argv[])
     int		    day_counter;
 
     FILE           *output_file;
+    FILE           *temp_file;
 
     int             c;
 
@@ -199,6 +202,9 @@ int main (int argc, char *argv[])
 
     for (k = 0; k < counter; k++)
     {
+        avg_pres = 0.0;
+        pres_counter = 0;
+
         if (mode == PIHM)
         {
             printf ("Generate PIHM forcing ");
@@ -217,6 +223,7 @@ int main (int argc, char *argv[])
         /* Open output file */
         sprintf (filename, "met%.4lfNx%.4lfW.txt", lat[k], -lon[k]);
         output_file = fopen (filename, "w");
+
         if (mode == PIHM)
         {
             fprintf (output_file, "%-16s\t", "TIME");
@@ -236,23 +243,12 @@ int main (int argc, char *argv[])
             fprintf (output_file, "%-6s\t", "W/m2");
             fprintf (output_file, "%-6s\t", "W/m2");
             fprintf (output_file, "%-9s\n", "Pa");
+            fflush (output_file);
         }
         else if (mode == CYCLES)
         {
-            fprintf (output_file, "%-20s\t%-lf\n", "LATITUDE", lat[k]);
-            fprintf (output_file, "%-20s\t%-lf\n", "ALTITUDE", 0.0);
-            fprintf (output_file, "%-20s\t10.0\n", "SCREENING_HEIGHT");
-            fprintf (output_file, "%-7s\t", "YEAR");
-            fprintf (output_file, "%-7s\t", "DOY");
-            fprintf (output_file, "%-7s\t", "PP");
-            fprintf (output_file, "%-7s\t", "TX");
-            fprintf (output_file, "%-7s\t", "TN");
-            fprintf (output_file, "%-7s\t", "SOLAR");
-            fprintf (output_file, "%-7s\t", "RHX");
-            fprintf (output_file, "%-7s\t", "RHN");
-            fprintf (output_file, "%-7s\n", "WIND");
+            temp_file = tmpfile ();
         }
-        fflush (output_file);
 
         time_start = timegm (&timeinfo_start);
         time_end = timegm (&timeinfo_end);
@@ -325,6 +321,9 @@ int main (int argc, char *argv[])
                 pres = value[PRES];
                 spfh = value[SPFH];
 
+                avg_pres += pres;
+                pres_counter++;
+
                 /* Calculate relative humidity from specific humidity */
                 e_s = 611.2 * exp (17.67 * (tmp - 273.15) /
                     (tmp - 273.15 + 243.5));
@@ -344,7 +343,7 @@ int main (int argc, char *argv[])
                 if (rh < rhn)
                     rhn = rh;
                 daily_wind = daily_wind + wind;
-        
+
                 if (mode == PIHM)
                 {
                     strftime (buffer, 17, "%Y-%m-%d %H:%M", timeinfo);
@@ -361,20 +360,58 @@ int main (int argc, char *argv[])
             }
             if (mode == CYCLES)
             {
-                fprintf (output_file, "%-7.4d\t", timeinfo->tm_year + 1900);
-                fprintf (output_file, "%-7d\t", jday);
-                fprintf (output_file, "%-7.4lf\t", daily_prcp);
-                fprintf (output_file, "%-7.2lf\t", tx - 273.15);
-                fprintf (output_file, "%-7.2lf\t", tn - 273.15);
-                fprintf (output_file, "%-7.4lf\t", daily_solar);
-                fprintf (output_file, "%-7.2lf\t", rhx);
-                fprintf (output_file, "%-7.2lf\t", rhn);
-                fprintf (output_file, "%-7.3lf\n", daily_wind / 24.0);
-                fflush (output_file);
+                fprintf (temp_file, "%-7.4d\t", timeinfo->tm_year + 1900);
+                fprintf (temp_file, "%-7d\t", jday);
+                fprintf (temp_file, "%-7.4lf\t", daily_prcp);
+                fprintf (temp_file, "%-7.2lf\t", tx - 273.15);
+                fprintf (temp_file, "%-7.2lf\t", tn - 273.15);
+                fprintf (temp_file, "%-7.4lf\t", daily_solar);
+                fprintf (temp_file, "%-7.2lf\t", rhx);
+                fprintf (temp_file, "%-7.2lf\t", rhn);
+                fprintf (temp_file, "%-7.3lf\n", daily_wind / 24.0);
+                fflush (temp_file);
             }
         }
 
-        fclose (output_file);
+        if (mode == PIHM)
+        {
+            fclose (output_file);
+        }
+        else
+        {
+            avg_pres /= (double)pres_counter;
+            printf ("%lf, %lf\n", avg_pres, -8200.0 * log(avg_pres / 101325.0));
+
+            fseek (temp_file, 0, SEEK_SET);
+
+            fprintf (output_file, "%-20s\t%-lf\n", "LATITUDE", lat[k]);
+            fprintf (output_file, "%-20s\t%-lf\n", "ALTITUDE", -8200.0 * log (avg_pres / 101325.0));
+            fprintf (output_file, "%-20s\t10.0\n", "SCREENING_HEIGHT");
+            fprintf (output_file, "%-7s\t", "YEAR");
+            fprintf (output_file, "%-7s\t", "DOY");
+            fprintf (output_file, "%-7s\t", "PP");
+            fprintf (output_file, "%-7s\t", "TX");
+            fprintf (output_file, "%-7s\t", "TN");
+            fprintf (output_file, "%-7s\t", "SOLAR");
+            fprintf (output_file, "%-7s\t", "RHX");
+            fprintf (output_file, "%-7s\t", "RHN");
+            fprintf (output_file, "%-7s\n", "WIND");
+
+            cmdstr[0] = '\0';
+
+            NextLine (temp_file, cmdstr, &lno);
+
+            while (strcasecmp (cmdstr, "EOF") != 0)
+            {
+                fprintf (output_file, "%s", cmdstr);
+                fflush (output_file);
+                NextLine (temp_file, cmdstr, &lno);
+            }
+
+            fclose (output_file);
+            fclose (temp_file);
+        }
+
     }
 
     return (EXIT_SUCCESS);
