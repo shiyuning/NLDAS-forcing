@@ -25,6 +25,7 @@
 
 enum            vrbl {TMP, SPFH, PRES, UGRD, VGRD, DLWRF, APCP, DSWRF};
 
+void            ParseCmdLineOpt(int, char *[], time_t *, time_t *, int *);
 int             Readable(const char *);
 void            NextLine(FILE *, char *, int *);
 
@@ -34,8 +35,6 @@ int main(int argc, char *argv[])
     int             ind_i[MAXLOC], ind_j[MAXLOC];
     int             ind[MAXLOC];
     time_t          time_start, time_end;
-    struct tm       timeinfo_start = { 0, 0, 0, 0, 0, 0 };
-    struct tm       timeinfo_end = { 0, 0, 0, 0, 0, 0 };
     int             i, k;
     double          lon[MAXLOC], lat[MAXLOC];
     int             nloc = 0;
@@ -55,80 +54,13 @@ int main(int argc, char *argv[])
     FILE           *input_file;
     FILE           *output_file[MAXLOC];
     FILE           *temp_file[MAXLOC];
-    int             year, month, mday;
     int             day_counter;
-    int             c;
-    int             mode;
+    int             model;
 
     /*
      * Get command line options
      */
-    while (1)
-    {
-        static struct option long_options[] = {
-            {"start", required_argument, 0, 'a'},
-            {"end",   required_argument, 0, 'b'},
-            {"model", required_argument, 0, 'c'},
-            {0, 0, 0, 0}
-        };
-        /* getopt_long stores the option index here. */
-        int             option_index = 0;
-
-        c = getopt_long(argc, argv, "a:b:c:d:", long_options, &option_index);
-
-        /* Detect the end of the options. */
-        if (-1 == c)
-        {
-            break;
-        }
-
-        switch (c)
-        {
-            case 'a':
-                sscanf(optarg, "%d-%d-%d", &year, &month, &mday);
-                timeinfo_start.tm_year = year - 1900;
-                timeinfo_start.tm_mon = month - 1;
-                timeinfo_start.tm_mday = mday;
-                break;
-            case 'b':
-                sscanf(optarg, "%d-%d-%d", &year, &month, &mday);
-                timeinfo_end.tm_year = year - 1900;
-                timeinfo_end.tm_mon = month - 1;
-                timeinfo_end.tm_mday = mday;
-                break;
-            case 'c':
-                if (strcasecmp("PIHM", optarg) == 0)
-                {
-                    mode = PIHM;
-                }
-                else if (strcasecmp("CYCLES", optarg) == 0)
-                {
-                    mode = CYCLES;
-                }
-                else
-                {
-                    printf("Error: Model %s is not recognized.\n", optarg);
-                    abort();
-                }
-                break;
-            case '?':
-                /* getopt_long already printed an error message. */
-                break;
-            default:
-                abort();
-        }
-    }
-
-    /* Print any remaining command line arguments (not options). */
-    if (optind < argc)
-    {
-        printf("non-option ARGV-elements: ");
-        while (optind < argc)
-        {
-            printf("%s ", argv[optind++]);
-        }
-        putchar('\n');
-    }
+    ParseCmdLineOpt(argc, argv, &time_start, &time_end, &model);
 
     /*
      * Read location.txt
@@ -195,7 +127,7 @@ int main(int argc, char *argv[])
         sprintf(output_fn, "met%.4lfNx%.4lfW.txt", lat[k], -lon[k]);
         output_file[k] = fopen(output_fn, "w");
 
-        if (PIHM == mode)
+        if (PIHM == model)
         {
             fprintf(output_file[k], "%-16s\t", "TIME");
             fprintf(output_file[k], "%-11s\t", "PRCP");
@@ -215,7 +147,7 @@ int main(int argc, char *argv[])
             fprintf(output_file[k], "%-9s\n", "Pa");
             fflush(output_file[k]);
         }
-        else if (CYCLES == mode)
+        else if (CYCLES == model)
         {
             temp_file[k] = tmpfile();
             avg_pres[k] = 0.0;
@@ -227,9 +159,6 @@ int main(int argc, char *argv[])
         ind_j[k] = rint((lat[k] - LA1) / DJ) + 1;
         ind[k] = 1 + (ind_i[k] - 1) + (ind_j[k] - 1) * NI;
     }
-
-    time_start = timegm(&timeinfo_start);
-    time_end = timegm(&timeinfo_end);
 
     for (day_counter = time_start; day_counter <= time_end;
         day_counter += 24 * 60 * 60)
@@ -331,7 +260,7 @@ int main(int argc, char *argv[])
                 rhn[k] = (rh < rhn[k]) ? rh : rhn[k];
                 daily_wind[k] += wind;
 
-                if (PIHM == mode)
+                if (PIHM == model)
                 {
                     char            buffer[MAXSTRING];
 
@@ -351,7 +280,7 @@ int main(int argc, char *argv[])
             fclose(input_file);
         }
 
-        if (CYCLES == mode)
+        if (CYCLES == model)
         {
             for (k = 0; k < nloc; k++)
             {
@@ -371,7 +300,7 @@ int main(int argc, char *argv[])
 
     for (k = 0; k < nloc; k++)
     {
-        if (CYCLES == mode)
+        if (CYCLES == model)
         {
             avg_pres[k] /= (double)pres_counter[k];
 
@@ -407,6 +336,84 @@ int main(int argc, char *argv[])
     }
 
     return EXIT_SUCCESS;
+}
+
+void ParseCmdLineOpt(int argc, char *argv[], time_t *time_start,
+    time_t *time_end, int *model)
+{
+    int             c;
+    struct tm       timeinfo_start = { 0, 0, 0, 0, 0, 0 };
+    struct tm       timeinfo_end = { 0, 0, 0, 0, 0, 0 };
+    int             year, month, mday;
+
+    while (1)
+    {
+        static struct option long_options[] = {
+            {"start", required_argument, 0, 'a'},
+            {"end",   required_argument, 0, 'b'},
+            {"model", required_argument, 0, 'c'},
+            {0, 0, 0, 0}
+        };
+        /* getopt_long stores the option index here. */
+        int             option_index = 0;
+
+        c = getopt_long(argc, argv, "a:b:c:d:", long_options, &option_index);
+
+        /* Detect the end of the options. */
+        if (-1 == c)
+        {
+            break;
+        }
+
+        switch (c)
+        {
+            case 'a':
+                sscanf(optarg, "%d-%d-%d", &year, &month, &mday);
+                timeinfo_start.tm_year = year - 1900;
+                timeinfo_start.tm_mon = month - 1;
+                timeinfo_start.tm_mday = mday;
+                *time_start = timegm(&timeinfo_start);
+                break;
+            case 'b':
+                sscanf(optarg, "%d-%d-%d", &year, &month, &mday);
+                timeinfo_end.tm_year = year - 1900;
+                timeinfo_end.tm_mon = month - 1;
+                timeinfo_end.tm_mday = mday;
+                *time_end = timegm(&timeinfo_end);
+                break;
+            case 'c':
+                if (strcasecmp("PIHM", optarg) == 0)
+                {
+                    *model = PIHM;
+                }
+                else if (strcasecmp("CYCLES", optarg) == 0)
+                {
+                    *model = CYCLES;
+                }
+                else
+                {
+                    printf("Error: Model %s is not recognized.\n", optarg);
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case '?':
+                /* getopt_long already printed an error message. */
+                break;
+            default:
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    /* Print any remaining command line arguments (not options). */
+    if (optind < argc)
+    {
+        printf("non-option ARGV-elements: ");
+        while (optind < argc)
+        {
+            printf("%s ", argv[optind++]);
+        }
+        putchar('\n');
+    }
 }
 
 int Readable(const char *cmdstr)
