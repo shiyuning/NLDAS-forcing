@@ -26,23 +26,19 @@
 enum            vrbl {TMP, SPFH, PRES, UGRD, VGRD, DLWRF, APCP, DSWRF};
 
 void            ParseCmdLineOpt(int, char *[], time_t *, time_t *, int *);
+void            ReadLoc(double [], double [], int *);
 int             Readable(const char *);
 void            NextLine(FILE *, char *, int *);
 
 int main(int argc, char *argv[])
 {
+    time_t          time_start, time_end;
+    double          lon[MAXLOC], lat[MAXLOC];
+    int             nloc = 0;
+    int             model;
     double          value[NVRBL];
     int             ind_i[MAXLOC], ind_j[MAXLOC];
     int             ind[MAXLOC];
-    time_t          time_start, time_end;
-    int             i, k;
-    double          lon[MAXLOC], lat[MAXLOC];
-    int             nloc = 0;
-    FILE           *loc_file;
-    int             match;
-    int             lno = 0;
-    char            cmdstr[MAXSTRING];
-    char            lon_char[MAXSTRING], lat_char[MAXSTRING];
     double          avg_pres[MAXLOC];
     int             pres_counter[MAXLOC];
     double          tx[MAXLOC], tn[MAXLOC];
@@ -55,7 +51,7 @@ int main(int argc, char *argv[])
     FILE           *output_file[MAXLOC];
     FILE           *temp_file[MAXLOC];
     int             day_counter;
-    int             model;
+    int             i, k;
 
     /*
      * Get command line options
@@ -65,58 +61,7 @@ int main(int argc, char *argv[])
     /*
      * Read location.txt
      */
-    loc_file = fopen("location.txt", "r");
-    if (NULL == loc_file)
-    {
-        printf("ERROR: Cannot find the required location.txt file.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    NextLine(loc_file, cmdstr, &lno);
-    match = sscanf(cmdstr, "%s %s", lat_char, lon_char);
-    if (match != 2 || strcasecmp(lat_char, "LATITUDE") != 0 ||
-        strcasecmp(lon_char, "LONGITUDE") != 0)
-    {
-        printf(
-            "Error reading the header line of location.txt at Line %d.\n", lno);
-        exit(EXIT_FAILURE);
-    }
-
-    for (i = 0; i < MAXLOC; i++)
-    {
-        NextLine(loc_file, cmdstr, &lno);
-
-        if (strcasecmp(cmdstr, "EOF") == 0)
-        {
-            break;
-        }
-
-        match = sscanf(cmdstr, "%lf %lf", &lat[i], &lon[i]);
-        if (match != 2)
-        {
-            printf("Error reading location.txt at Line %d.\n", lno);
-            exit(EXIT_FAILURE);
-        }
-
-        if (lon[i] > 180.0)
-        {
-            lon[i] -= 360.0;
-        }
-
-        if (lat[i] < LA1 || lat[i] > LA2)
-        {
-            printf("Error: latitude out of range (25.0625N ~ 52.9375N)\n");
-            exit(EXIT_FAILURE);
-        }
-
-        if (lon[i] < LO1 || lon[i] > LO2)
-        {
-            printf("Error: longitude out of range (124.9375W ~ 67.0625W)\n");
-            exit(EXIT_FAILURE);
-        }
-
-        nloc++;
-    }
+    ReadLoc(lat, lon, &nloc);
 
     /* Initialize Files and Grid Locations */
     for (k = 0; k < nloc; k++)
@@ -300,6 +245,9 @@ int main(int argc, char *argv[])
 
     for (k = 0; k < nloc; k++)
     {
+        int             lno = 0;
+        char            cmdstr[MAXSTRING];
+
         if (CYCLES == model)
         {
             avg_pres[k] /= (double)pres_counter[k];
@@ -349,9 +297,9 @@ void ParseCmdLineOpt(int argc, char *argv[], time_t *time_start,
     while (1)
     {
         static struct option long_options[] = {
-            {"start", required_argument, 0, 'a'},
-            {"end",   required_argument, 0, 'b'},
-            {"model", required_argument, 0, 'c'},
+            {"start", required_argument, 0, 's'},
+            {"end",   required_argument, 0, 'e'},
+            {"model", required_argument, 0, 'm'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
@@ -367,21 +315,21 @@ void ParseCmdLineOpt(int argc, char *argv[], time_t *time_start,
 
         switch (c)
         {
-            case 'a':
+            case 's':
                 sscanf(optarg, "%d-%d-%d", &year, &month, &mday);
                 timeinfo_start.tm_year = year - 1900;
                 timeinfo_start.tm_mon = month - 1;
                 timeinfo_start.tm_mday = mday;
                 *time_start = timegm(&timeinfo_start);
                 break;
-            case 'b':
+            case 'e':
                 sscanf(optarg, "%d-%d-%d", &year, &month, &mday);
                 timeinfo_end.tm_year = year - 1900;
                 timeinfo_end.tm_mon = month - 1;
                 timeinfo_end.tm_mday = mday;
                 *time_end = timegm(&timeinfo_end);
                 break;
-            case 'c':
+            case 'm':
                 if (strcasecmp("PIHM", optarg) == 0)
                 {
                     *model = PIHM;
@@ -413,6 +361,66 @@ void ParseCmdLineOpt(int argc, char *argv[], time_t *time_start,
             printf("%s ", argv[optind++]);
         }
         putchar('\n');
+    }
+}
+
+void ReadLoc(double lat[], double lon[], int *nloc)
+{
+    FILE           *loc_file;
+    int             match;
+    int             lno = 0;
+    char            cmdstr[MAXSTRING];
+    char            lon_char[MAXSTRING], lat_char[MAXSTRING];
+    int             kloc;
+
+    loc_file = fopen("location.txt", "r");
+    if (NULL == loc_file)
+    {
+        printf("ERROR: Cannot find the required location.txt file.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    NextLine(loc_file, cmdstr, &lno);
+    match = sscanf(cmdstr, "%s %s", lat_char, lon_char);
+    if (match != 2 || strcasecmp(lat_char, "LATITUDE") != 0 ||
+        strcasecmp(lon_char, "LONGITUDE") != 0)
+    {
+        printf( "Error reading the header line of location.txt at Line %d.\n",
+            lno);
+        exit(EXIT_FAILURE);
+    }
+
+    for (kloc = 0; kloc < MAXLOC; kloc++)
+    {
+        NextLine(loc_file, cmdstr, &lno);
+
+        if (strcasecmp(cmdstr, "EOF") == 0)
+        {
+            break;
+        }
+
+        match = sscanf(cmdstr, "%lf %lf", &lat[kloc], &lon[kloc]);
+        if (match != 2)
+        {
+            printf("Error reading location.txt at Line %d.\n", lno);
+            exit(EXIT_FAILURE);
+        }
+
+        lon[kloc] -= (lon[kloc] > 180.0) ? 360.0 : 0.0;
+
+        if (lat[kloc] < LA1 || lat[kloc] > LA2)
+        {
+            printf("Error: latitude out of range (25.0625N ~ 52.9375N)\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if (lon[kloc] < LO1 || lon[kloc] > LO2)
+        {
+            printf("Error: longitude out of range (124.9375W ~ 67.0625W)\n");
+            exit(EXIT_FAILURE);
+        }
+
+        (*nloc)++;
     }
 }
 
