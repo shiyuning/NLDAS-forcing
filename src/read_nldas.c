@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
     FILE           *output_file[MAXLOC];
     FILE           *temp_file[MAXLOC];
     int             day_counter;
+    int             kloc;
     int             i, k;
 
     /*
@@ -64,45 +65,48 @@ int main(int argc, char *argv[])
     ReadLoc(lat, lon, &nloc);
 
     /* Initialize Files and Grid Locations */
-    for (k = 0; k < nloc; k++)
+    for (kloc = 0; kloc < nloc; kloc++)
     {
         char            output_fn[MAXSTRING];
 
+        /* Find the nearest NLDAS grid */
+        ind_i[kloc] = rint((lon[kloc] - LO1) / DI) + 1;
+        ind_j[kloc] = rint((lat[kloc] - LA1) / DJ) + 1;
+        ind[kloc] = 1 + (ind_i[kloc] - 1) + (ind_j[kloc] - 1) * NI;
+
         /* Open output file */
-        sprintf(output_fn, "met%.4lfNx%.4lfW.txt", lat[k], -lon[k]);
-        output_file[k] = fopen(output_fn, "w");
+        sprintf(output_fn, "met%.4lfNx%.4lfW.txt", lat[kloc], -lon[kloc]);
+        output_file[kloc] = fopen(output_fn, "w");
+
+        fprintf(output_file[kloc], "# NLDAS-2 grid: %.4lfNx%.4lfW\n",
+            LA1 + (ind_j[kloc] - 1) * DJ, -(LO1 + (ind_i[kloc] - 1) * DI));
 
         if (PIHM == model)
         {
-            fprintf(output_file[k], "%-16s\t", "TIME");
-            fprintf(output_file[k], "%-11s\t", "PRCP");
-            fprintf(output_file[k], "%-6s\t", "SFCTMP");
-            fprintf(output_file[k], "%-5s\t", "RH");
-            fprintf(output_file[k], "%-6s\t", "SFCSPD");
-            fprintf(output_file[k], "%-6s\t", "SOLAR");
-            fprintf(output_file[k], "%-6s\t", "LONGWV");
-            fprintf(output_file[k], "%-9s\n", "PRES");
-            fprintf(output_file[k], "%-16s\t", "TS");
-            fprintf(output_file[k], "%-11s\t", "kg/m2/s");
-            fprintf(output_file[k], "%-6s\t", "K");
-            fprintf(output_file[k], "%-5s\t", "%");
-            fprintf(output_file[k], "%-6s\t", "m/s");
-            fprintf(output_file[k], "%-6s\t", "W/m2");
-            fprintf(output_file[k], "%-6s\t", "W/m2");
-            fprintf(output_file[k], "%-9s\n", "Pa");
-            fflush(output_file[k]);
+            fprintf(output_file[kloc], "%-16s\t", "TIME");
+            fprintf(output_file[kloc], "%-11s\t", "PRCP");
+            fprintf(output_file[kloc], "%-6s\t", "SFCTMP");
+            fprintf(output_file[kloc], "%-5s\t", "RH");
+            fprintf(output_file[kloc], "%-6s\t", "SFCSPD");
+            fprintf(output_file[kloc], "%-6s\t", "SOLAR");
+            fprintf(output_file[kloc], "%-6s\t", "LONGWV");
+            fprintf(output_file[kloc], "%-9s\n", "PRES");
+            fprintf(output_file[kloc], "%-16s\t", "TS");
+            fprintf(output_file[kloc], "%-11s\t", "kg/m2/s");
+            fprintf(output_file[kloc], "%-6s\t", "K");
+            fprintf(output_file[kloc], "%-5s\t", "%");
+            fprintf(output_file[kloc], "%-6s\t", "m/s");
+            fprintf(output_file[kloc], "%-6s\t", "W/m2");
+            fprintf(output_file[kloc], "%-6s\t", "W/m2");
+            fprintf(output_file[kloc], "%-9s\n", "Pa");
+            fflush(output_file[kloc]);
         }
         else if (CYCLES == model)
         {
-            temp_file[k] = tmpfile();
-            avg_pres[k] = 0.0;
-            pres_counter[k] = 0;
+            temp_file[kloc] = tmpfile();
+            avg_pres[kloc] = 0.0;
+            pres_counter[kloc] = 0;
         }
-
-        /* Find the nearest NLDAS grid */
-        ind_i[k] = rint((lon[k] - LO1) / DI) + 1;
-        ind_j[k] = rint((lat[k] - LA1) / DJ) + 1;
-        ind[k] = 1 + (ind_i[k] - 1) + (ind_j[k] - 1) * NI;
     }
 
     for (day_counter = time_start; day_counter <= time_end;
