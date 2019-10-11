@@ -1,6 +1,9 @@
 # Add each desired location to a new line.
 # A maximum of 1024 locations can be added.
 # The next line is a required header line and should not be removed
-LATITUDE    LONGITUDE
-40.6125     -78.1408
-41.6125     -78.1408
+# NOTE: Do not use white spaces in your site name.
+# If a name is not provided, the generate forcing file will be named as:
+#   [LAT]Nx[LON]W.*
+LATITUDE    LONGITUDE   NAME
+40.698      -78.016     Halfmoon
+40.667      -77.903     ShaleHills

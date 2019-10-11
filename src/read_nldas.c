@@ -26,7 +26,7 @@
 enum            vrbl {TMP, SPFH, PRES, UGRD, VGRD, DLWRF, APCP, DSWRF};
 
 void            ParseCmdLineOpt(int, char *[], time_t *, time_t *, int *);
-void            ReadLoc(double [], double [], int *);
+void            ReadLoc(double [], double [], char [MAXLOC][MAXSTRING], int *);
 int             Readable(const char *);
 void            NextLine(FILE *, char *, int *);
 
@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     time_t          time_start, time_end;
     double          lon[MAXLOC], lat[MAXLOC];
     int             nloc = 0;
+    char            siten[MAXLOC][MAXSTRING];
     int             model;
     double          value[NVRBL];
     int             ind_i[MAXLOC], ind_j[MAXLOC];
@@ -62,7 +63,7 @@ int main(int argc, char *argv[])
     /*
      * Read location.txt
      */
-    ReadLoc(lat, lon, &nloc);
+    ReadLoc(lat, lon, siten, &nloc);
 
     /* Initialize Files and Grid Locations */
     for (kloc = 0; kloc < nloc; kloc++)
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
         ind[kloc] = 1 + (ind_i[kloc] - 1) + (ind_j[kloc] - 1) * NI;
 
         /* Open output file */
-        sprintf(output_fn, "met%.4lfNx%.4lfW.txt", lat[kloc], -lon[kloc]);
+        sprintf(output_fn, "%s.txt", siten[kloc]);
         output_file[kloc] = fopen(output_fn, "w");
 
         fprintf(output_file[kloc], "# NLDAS-2 grid: %.4lfNx%.4lfW\n",
@@ -368,13 +369,15 @@ void ParseCmdLineOpt(int argc, char *argv[], time_t *time_start,
     }
 }
 
-void ReadLoc(double lat[], double lon[], int *nloc)
+void ReadLoc(double lat[], double lon[], char siten[MAXLOC][MAXSTRING],
+    int *nloc)
 {
     FILE           *loc_file;
     int             match;
     int             lno = 0;
     char            cmdstr[MAXSTRING];
     char            lon_char[MAXSTRING], lat_char[MAXSTRING];
+    char            siten_char[MAXSTRING];
     int             kloc;
 
     loc_file = fopen("location.txt", "r");
@@ -385,9 +388,10 @@ void ReadLoc(double lat[], double lon[], int *nloc)
     }
 
     NextLine(loc_file, cmdstr, &lno);
-    match = sscanf(cmdstr, "%s %s", lat_char, lon_char);
-    if (match != 2 || strcasecmp(lat_char, "LATITUDE") != 0 ||
-        strcasecmp(lon_char, "LONGITUDE") != 0)
+    match = sscanf(cmdstr, "%s %s %s", lat_char, lon_char, siten_char);
+    if (match != 3 || strcasecmp(lat_char, "LATITUDE") != 0 ||
+        strcasecmp(lon_char, "LONGITUDE") != 0 ||
+        strcasecmp(siten_char, "NAME") != 0)
     {
         printf( "Error reading the header line of location.txt at Line %d.\n",
             lno);
@@ -403,8 +407,9 @@ void ReadLoc(double lat[], double lon[], int *nloc)
             break;
         }
 
-        match = sscanf(cmdstr, "%lf %lf", &lat[kloc], &lon[kloc]);
-        if (match != 2)
+        match = sscanf(cmdstr, "%lf %lf %s", &lat[kloc], &lon[kloc],
+            siten[kloc]);
+        if (match != 3 && match != 2)
         {
             printf("Error reading location.txt at Line %d.\n", lno);
             exit(EXIT_FAILURE);
@@ -422,6 +427,11 @@ void ReadLoc(double lat[], double lon[], int *nloc)
         {
             printf("Error: longitude out of range (124.9375W ~ 67.0625W)\n");
             exit(EXIT_FAILURE);
+        }
+
+        if (match == 2)
+        {
+            sprintf(siten[kloc], "met%.4lfNx%.4lfW", lat[kloc], -lon[kloc]);
         }
 
         (*nloc)++;
