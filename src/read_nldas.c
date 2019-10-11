@@ -73,14 +73,17 @@ int main(int argc, char *argv[])
         ind[kloc] = 1 + (ind_i[kloc] - 1) + (ind_j[kloc] - 1) * NI;
 
         /* Open output file */
-        sprintf(output_fn, "%s.txt", siten[kloc]);
+        sprintf(output_fn, (PIHM == model) ? "%s.meteo" : "%s.weather",
+            siten[kloc]);
         output_file[kloc] = fopen(output_fn, "w");
 
+        /* Print NLDAS-2 grid */
         fprintf(output_file[kloc], "# NLDAS-2 grid: %.4lfNx%.4lfW\n",
             LA1 + (ind_j[kloc] - 1) * DJ, -(LO1 + (ind_i[kloc] - 1) * DI));
 
         if (PIHM == model)
         {
+            /* Print header */
             fprintf(output_file[kloc], "%-16s\t", "TIME");
             fprintf(output_file[kloc], "%-11s\t", "PRCP");
             fprintf(output_file[kloc], "%-6s\t", "SFCTMP");
