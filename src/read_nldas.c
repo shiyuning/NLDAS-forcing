@@ -26,14 +26,13 @@
 enum            vrbl {TMP, SPFH, PRES, UGRD, VGRD, DLWRF, APCP, DSWRF};
 
 void            ParseCmdLineOpt(int, char *[], time_t *, time_t *, int *);
-void            ReadLoc(double [], double [], char [MAXLOC][MAXSTRING], int *);
+void            ReadLoc(int [], int [], char [MAXLOC][MAXSTRING], int *);
 int             Readable(const char *);
 void            NextLine(FILE *, char *, int *);
 
 int main(int argc, char *argv[])
 {
     time_t          time_start, time_end;
-    double          lon[MAXLOC], lat[MAXLOC];
     int             nloc = 0;
     char            siten[MAXLOC][MAXSTRING];
     int             model;
@@ -63,7 +62,7 @@ int main(int argc, char *argv[])
     /*
      * Read location.txt
      */
-    ReadLoc(lat, lon, siten, &nloc);
+    ReadLoc(ind_i, ind_j, siten, &nloc);
 
     /* Initialize Files and Grid Locations */
     for (kloc = 0; kloc < nloc; kloc++)
@@ -71,8 +70,6 @@ int main(int argc, char *argv[])
         char            output_fn[MAXSTRING];
 
         /* Find the nearest NLDAS grid */
-        ind_i[kloc] = rint((lon[kloc] - LO1) / DI) + 1;
-        ind_j[kloc] = rint((lat[kloc] - LA1) / DJ) + 1;
         ind[kloc] = 1 + (ind_i[kloc] - 1) + (ind_j[kloc] - 1) * NI;
 
         /* Open output file */
@@ -257,8 +254,9 @@ int main(int argc, char *argv[])
         {
             avg_pres[k] /= (double)pres_counter[k];
 
-            fprintf(output_file[k], "%-20s\t%-lf\n", "LATITUDE", lat[k]);
-            fprintf(output_file[k], "%-20s\t%-lf\n", "ALTITUDE",
+            fprintf(output_file[k], "%-20s\t%-lf\n", "LATITUDE",
+                LA1 + (ind_j[kloc] - 1) * DJ);
+            fprintf(output_file[k], "%-20s\t%-.2lf\n", "ALTITUDE",
                 -8200.0 * log(avg_pres[k] / 101325.0));
             fprintf(output_file[k], "%-20s\t10.0\n", "SCREENING_HEIGHT");
             fprintf(output_file[k], "%-7s\t", "YEAR");
@@ -369,7 +367,7 @@ void ParseCmdLineOpt(int argc, char *argv[], time_t *time_start,
     }
 }
 
-void ReadLoc(double lat[], double lon[], char siten[MAXLOC][MAXSTRING],
+void ReadLoc(int ind_i[], int ind_j[], char siten[MAXLOC][MAXSTRING],
     int *nloc)
 {
     FILE           *loc_file;
@@ -379,7 +377,10 @@ void ReadLoc(double lat[], double lon[], char siten[MAXLOC][MAXSTRING],
     char            lon_char[MAXSTRING], lat_char[MAXSTRING];
     char            siten_char[MAXSTRING];
     int             kloc;
+    int             exist;
+    double          lat, lon;
 
+    /* Open location file */
     loc_file = fopen("location.txt", "r");
     if (NULL == loc_file)
     {
@@ -387,6 +388,7 @@ void ReadLoc(double lat[], double lon[], char siten[MAXLOC][MAXSTRING],
         exit(EXIT_FAILURE);
     }
 
+    /* Read header line */
     NextLine(loc_file, cmdstr, &lno);
     match = sscanf(cmdstr, "%s %s %s", lat_char, lon_char, siten_char);
     if (match != 3 || strcasecmp(lat_char, "LATITUDE") != 0 ||
@@ -398,43 +400,66 @@ void ReadLoc(double lat[], double lon[], char siten[MAXLOC][MAXSTRING],
         exit(EXIT_FAILURE);
     }
 
-    for (kloc = 0; kloc < MAXLOC; kloc++)
+    NextLine(loc_file, cmdstr, &lno);
+    while (strcasecmp(cmdstr, "EOF") != 0)
     {
-        NextLine(loc_file, cmdstr, &lno);
-
-        if (strcasecmp(cmdstr, "EOF") == 0)
-        {
-            break;
-        }
-
-        match = sscanf(cmdstr, "%lf %lf %s", &lat[kloc], &lon[kloc],
-            siten[kloc]);
+        /* Read one line of lat, lon, and site name */
+        match = sscanf(cmdstr, "%lf %lf %s", &lat, &lon, siten_char);
         if (match != 3 && match != 2)
         {
             printf("Error reading location.txt at Line %d.\n", lno);
             exit(EXIT_FAILURE);
         }
 
-        lon[kloc] -= (lon[kloc] > 180.0) ? 360.0 : 0.0;
+        /* Adjust longitude */
+        lon -= (lon > 180.0) ? 360.0 : 0.0;
 
-        if (lat[kloc] < LA1 || lat[kloc] > LA2)
+        /* Create a name when site name is missing from input */
+        if (match == 2)
+        {
+            sprintf(siten_char, "met%.4lfNx%.4lfW", lat, -lon);
+        }
+
+        /* Check if specified lat/lon are within NLDAS-2 domain */
+        if (lat < LA1 || lat > LA2)
         {
             printf("Error: latitude out of range (25.0625N ~ 52.9375N)\n");
             exit(EXIT_FAILURE);
         }
 
-        if (lon[kloc] < LO1 || lon[kloc] > LO2)
+        if (lon < LO1 || lon > LO2)
         {
             printf("Error: longitude out of range (124.9375W ~ 67.0625W)\n");
             exit(EXIT_FAILURE);
         }
 
-        if (match == 2)
+        /* Check if site are in the same NLDAS grid as other sites */
+        exist = 0;
+        if (*nloc > 0)
         {
-            sprintf(siten[kloc], "met%.4lfNx%.4lfW", lat[kloc], -lon[kloc]);
+            for (kloc = 0; kloc < *nloc; kloc++)
+            {
+                if (rint((lon - LO1) / DI) + 1 == ind_i[kloc] &&
+                    rint((lat - LA1) / DJ) + 1 == ind_j[kloc])
+                {
+                    printf("Site %s and site %s are in the same NLDAS grid.\n"
+                        "Forcing for Site %s will not be generated.\n",
+                        siten_char, siten[kloc], siten_char);
+                    exist = 1;
+                    break;
+                }
+            }
         }
 
-        (*nloc)++;
+        if (!exist)
+        {
+            ind_i[*nloc] = rint((lon - LO1) / DI) + 1;
+            ind_j[*nloc] = rint((lat - LA1) / DJ) + 1;
+            strcpy(siten[*nloc], siten_char);
+            (*nloc)++;
+        }
+
+        NextLine(loc_file, cmdstr, &lno);
     }
 }
 
