@@ -34,6 +34,7 @@ NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GES DISC archive, 
 
    When multiple locations are specified, OpenMP is used to optimize efficiency.
    Be sure to request for multiple cores (`ppn`) and use `NUM_OMP_THREADS` parameter to specify the correct number of threads to accelerate the code.
+   A sample `NLDAS.pbs` is provided for users who use PBS job systems.
 
 **Note:**
 The script will detect whether `.grib` and binary files already exist so it only downloads when necessary.
