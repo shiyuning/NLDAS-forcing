@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
     FILE           *input_file;
     FILE           *output_file[MAXLOC];
     FILE           *temp_file[MAXLOC];
+    float           buffer[NLDAS_SIZE * NVRBL];
     int             day_counter;
     int             kloc;
 
@@ -117,21 +118,6 @@ int main(int argc, char *argv[])
         struct tm      *timeinfo;
         int             jday;
 
-#if defined(_OPENMP)
-# pragma omp parallel for
-#endif
-        for (kloc = 0; kloc < nloc; kloc++)
-        {
-            /* Initialize daily variables */
-            tx[kloc] = -999.0;
-            tn[kloc] = 999.0;
-            daily_solar[kloc] = 0.0;
-            daily_prcp[kloc] = 0.0;
-            rhx[kloc] = -999.0;
-            rhn[kloc] = 999.0;
-            daily_wind[kloc] = 0.0;
-        }
-
         for (rawtime = day_counter; rawtime <= day_counter + 23 * 60 * 60;
             rawtime += 60 * 60)
         {
@@ -160,6 +146,12 @@ int main(int argc, char *argv[])
                 break;
             }
 
+            fread(buffer, 4L, NLDAS_SIZE * NVRBL, input_file);
+            fclose(input_file);
+
+#if defined(_OPENMP)
+# pragma omp parallel for
+#endif
             for (kloc = 0; kloc < nloc; kloc++)
             {
                 double          prcp;
@@ -175,16 +167,22 @@ int main(int argc, char *argv[])
                 int             kvar;
                 double          value[NVRBL];
 
+                /* Initialize daily variables */
+                if (0 == timeinfo->tm_hour)
+                {
+                    tx[kloc] = -999.0;
+                    tn[kloc] = 999.0;
+                    daily_solar[kloc] = 0.0;
+                    daily_prcp[kloc] = 0.0;
+                    rhx[kloc] = -999.0;
+                    rhn[kloc] = 999.0;
+                    daily_wind[kloc] = 0.0;
+                }
+
                 for (kvar = 0; kvar < NVRBL; kvar++)
                 {
-                    /* Skip to locate the nearest NLDAS grid */
-                    fseek(input_file,
-                        (long int)((kvar * NLDAS_SIZE + ind[kloc] - 1) * 4),
-                        SEEK_SET);
-                    /* Read in forcing */
-                    fread(&temp, 4L, 1, input_file);
-
-                    value[kvar] = (double)temp;
+                    value[kvar] =
+                        (double)buffer[kvar * NLDAS_SIZE + ind[kloc] - 1];
                 }
 
                 tmp = value[TMP];
@@ -233,12 +231,13 @@ int main(int argc, char *argv[])
                     fflush(output_file[kloc]);
                 }
             }
-
-            fclose(input_file);
         }
 
         if (CYCLES == model)
         {
+#if defined(_OPENMP)
+# pragma omp parallel for
+#endif
             for (kloc = 0; kloc < nloc; kloc++)
             {
                 fprintf(temp_file[kloc], "%-7.4d\t", timeinfo->tm_year + 1900);
