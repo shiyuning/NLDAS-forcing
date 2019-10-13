@@ -22,7 +22,7 @@ NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GES DISC archive, 
 4. Then edit the location file `location.txt` to add your desired locations.
    A maximum of 1024 locations can be added, by specifying the latitude and longitude of each location.
    You can provide an optional name for each site, which will be used to name generated forcing files.
-   If a name is not provided, the generate forcing file will be named using the latutude and longitude.
+   If a name is not provided, the generate forcing file will be named using the latitude and longitude.
    Please do not use white spaces in your site names.
    One forcing file will be generated for each added location.
 
@@ -32,7 +32,11 @@ NLDAS-forcing can **download** NLDAS-2 forcing data from NASA GES DISC archive, 
    $ ./nldas-forcing
    ```
 
-**Note:** the script will detect whether `.grib` and binary files already exist so it only downloads when necessary.
+   When multiple locations are specified, OpenMP is used to optimize efficiency.
+   Be sure to request for multiple cores (`ppn`) and use `NUM_OMP_THREADS` parameter to specify the correct number of threads to accelerate the code.
+
+**Note:**
+The script will detect whether `.grib` and binary files already exist so it only downloads when necessary.
 Downloaded `.grib` files and interpreted `.girb.dat` files will be stored in the `Data` directory, organized by year, and Julian day of year.
 
 ### ACKNOWLEDGMENT:
