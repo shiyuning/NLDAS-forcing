@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
     int             nloc = 0;
     char            siten[MAXLOC][MAXSTRING];
     int             model;
-    double          value[NVRBL];
     int             ind_i[MAXLOC], ind_j[MAXLOC];
     int             ind[MAXLOC];
     double          avg_pres[MAXLOC];
@@ -46,13 +45,11 @@ int main(int argc, char *argv[])
     double          daily_prcp[MAXLOC];
     double          rhx[MAXLOC], rhn[MAXLOC];
     double          daily_wind[MAXLOC];
-    float           temp;
     FILE           *input_file;
     FILE           *output_file[MAXLOC];
     FILE           *temp_file[MAXLOC];
     int             day_counter;
     int             kloc;
-    int             i, k;
 
     /*
      * Get command line options
@@ -65,6 +62,9 @@ int main(int argc, char *argv[])
     ReadLoc(ind_i, ind_j, siten, &nloc);
 
     /* Initialize Files and Grid Locations */
+#if defined(_OPENMP)
+# pragma omp parallel for
+#endif
     for (kloc = 0; kloc < nloc; kloc++)
     {
         char            output_fn[MAXSTRING];
@@ -117,22 +117,26 @@ int main(int argc, char *argv[])
         struct tm      *timeinfo;
         int             jday;
 
-        for (k = 0; k < nloc; k++)
+#if defined(_OPENMP)
+# pragma omp parallel for
+#endif
+        for (kloc = 0; kloc < nloc; kloc++)
         {
             /* Initialize daily variables */
-            tx[k] = -999.0;
-            tn[k] = 999.0;
-            daily_solar[k] = 0.0;
-            daily_prcp[k] = 0.0;
-            rhx[k] = -999.0;
-            rhn[k] = 999.0;
-            daily_wind[k] = 0.0;
+            tx[kloc] = -999.0;
+            tn[kloc] = 999.0;
+            daily_solar[kloc] = 0.0;
+            daily_prcp[kloc] = 0.0;
+            rhx[kloc] = -999.0;
+            rhn[kloc] = 999.0;
+            daily_wind[kloc] = 0.0;
         }
 
         for (rawtime = day_counter; rawtime <= day_counter + 23 * 60 * 60;
             rawtime += 60 * 60)
         {
             char            nldas_fn[MAXSTRING];
+
             timeinfo = gmtime(&rawtime);
             jday = timeinfo->tm_yday + 1;
 
@@ -156,7 +160,7 @@ int main(int argc, char *argv[])
                 break;
             }
 
-            for (k = 0; k < nloc; k++)
+            for (kloc = 0; kloc < nloc; kloc++)
             {
                 double          prcp;
                 double          tmp;
@@ -167,17 +171,20 @@ int main(int argc, char *argv[])
                 double          pres;
                 double          rh;
                 double          e_s, w_s, w;
+                float           temp;
+                int             kvar;
+                double          value[NVRBL];
 
-                for (i = 0; i < NVRBL; i++)
+                for (kvar = 0; kvar < NVRBL; kvar++)
                 {
                     /* Skip to locate the nearest NLDAS grid */
                     fseek(input_file,
-                        (long int)((i * NLDAS_SIZE + ind[k] - 1) * 4),
+                        (long int)((kvar * NLDAS_SIZE + ind[kloc] - 1) * 4),
                         SEEK_SET);
                     /* Read in forcing */
                     fread(&temp, 4L, 1, input_file);
 
-                    value[i] = (double)temp;
+                    value[kvar] = (double)temp;
                 }
 
                 tmp = value[TMP];
@@ -190,8 +197,8 @@ int main(int argc, char *argv[])
                 pres = value[PRES];
                 spfh = value[SPFH];
 
-                avg_pres[k] += pres;
-                pres_counter[k]++;
+                avg_pres[kloc] += pres;
+                pres_counter[kloc]++;
 
                 /* Calculate relative humidity from specific humidity */
                 e_s = 611.2 * exp(17.67 * (tmp - 273.15) /
@@ -201,29 +208,29 @@ int main(int argc, char *argv[])
                 rh = w / w_s * 100.0;
                 rh = (rh > 100.0) ? 100.0 : rh;
 
-                daily_prcp[k] += prcp * 3600.0;
+                daily_prcp[kloc] += prcp * 3600.0;
 
-                tx[k] = (tmp > tx[k]) ? tmp : tx[k];
-                tn[k] = (tmp < tn[k]) ? tmp : tn[k];
-                daily_solar[k] += dswrf * 3600.0 / 1.0e6;
-                rhx[k] = (rh > rhx[k]) ? rh : rhx[k];
-                rhn[k] = (rh < rhn[k]) ? rh : rhn[k];
-                daily_wind[k] += wind;
+                tx[kloc] = (tmp > tx[kloc]) ? tmp : tx[kloc];
+                tn[kloc] = (tmp < tn[kloc]) ? tmp : tn[kloc];
+                daily_solar[kloc] += dswrf * 3600.0 / 1.0e6;
+                rhx[kloc] = (rh > rhx[kloc]) ? rh : rhx[kloc];
+                rhn[kloc] = (rh < rhn[kloc]) ? rh : rhn[kloc];
+                daily_wind[kloc] += wind;
 
                 if (PIHM == model)
                 {
                     char            buffer[MAXSTRING];
 
                     strftime(buffer, 17, "%Y-%m-%d %H:%M", timeinfo);
-                    fprintf(output_file[k], "%s\t", buffer);
-                    fprintf(output_file[k], "%-11.8lf\t", prcp);
-                    fprintf(output_file[k], "%-6.2lf\t", tmp);
-                    fprintf(output_file[k], "%-5.2lf\t", w / w_s * 100.0);
-                    fprintf(output_file[k], "%-5.2lf\t", wind);
-                    fprintf(output_file[k], "%-6.2lf\t", dswrf);
-                    fprintf(output_file[k], "%-6.2lf\t", dlwrf);
-                    fprintf(output_file[k], "%-9.2lf\n", pres);
-                    fflush(output_file[k]);
+                    fprintf(output_file[kloc], "%s\t", buffer);
+                    fprintf(output_file[kloc], "%-11.8lf\t", prcp);
+                    fprintf(output_file[kloc], "%-6.2lf\t", tmp);
+                    fprintf(output_file[kloc], "%-5.2lf\t", w / w_s * 100.0);
+                    fprintf(output_file[kloc], "%-5.2lf\t", wind);
+                    fprintf(output_file[kloc], "%-6.2lf\t", dswrf);
+                    fprintf(output_file[kloc], "%-6.2lf\t", dlwrf);
+                    fprintf(output_file[kloc], "%-9.2lf\n", pres);
+                    fflush(output_file[kloc]);
                 }
             }
 
@@ -232,61 +239,64 @@ int main(int argc, char *argv[])
 
         if (CYCLES == model)
         {
-            for (k = 0; k < nloc; k++)
+            for (kloc = 0; kloc < nloc; kloc++)
             {
-                fprintf(temp_file[k], "%-7.4d\t", timeinfo->tm_year + 1900);
-                fprintf(temp_file[k], "%-7d\t", jday);
-                fprintf(temp_file[k], "%-7.4lf\t", daily_prcp[k]);
-                fprintf(temp_file[k], "%-7.2lf\t", tx[k] - 273.15);
-                fprintf(temp_file[k], "%-7.2lf\t", tn[k] - 273.15);
-                fprintf(temp_file[k], "%-7.4lf\t", daily_solar[k]);
-                fprintf(temp_file[k], "%-7.2lf\t", rhx[k]);
-                fprintf(temp_file[k], "%-7.2lf\t", rhn[k]);
-                fprintf(temp_file[k], "%-7.3lf\n", daily_wind[k] / 24.0);
-                fflush(temp_file[k]);
+                fprintf(temp_file[kloc], "%-7.4d\t", timeinfo->tm_year + 1900);
+                fprintf(temp_file[kloc], "%-7d\t", jday);
+                fprintf(temp_file[kloc], "%-7.4lf\t", daily_prcp[kloc]);
+                fprintf(temp_file[kloc], "%-7.2lf\t", tx[kloc] - 273.15);
+                fprintf(temp_file[kloc], "%-7.2lf\t", tn[kloc] - 273.15);
+                fprintf(temp_file[kloc], "%-7.4lf\t", daily_solar[kloc]);
+                fprintf(temp_file[kloc], "%-7.2lf\t", rhx[kloc]);
+                fprintf(temp_file[kloc], "%-7.2lf\t", rhn[kloc]);
+                fprintf(temp_file[kloc], "%-7.3lf\n", daily_wind[kloc] / 24.0);
+                fflush(temp_file[kloc]);
             }
         }
     }
 
-    for (k = 0; k < nloc; k++)
+#if defined(_OPENMP)
+# pragma omp parallel for
+#endif
+    for (kloc = 0; kloc < nloc; kloc++)
     {
         int             lno = 0;
         char            cmdstr[MAXSTRING];
 
         if (CYCLES == model)
         {
-            avg_pres[k] /= (double)pres_counter[k];
+            avg_pres[kloc] /= (double)pres_counter[kloc];
 
-            fprintf(output_file[k], "%-20s\t%-lf\n", "LATITUDE",
+            fprintf(output_file[kloc], "%-20s\t%-lf\n", "LATITUDE",
                 LA1 + (ind_j[kloc] - 1) * DJ);
-            fprintf(output_file[k], "%-20s\t%-.2lf\n", "ALTITUDE",
-                -8200.0 * log(avg_pres[k] / 101325.0));
-            fprintf(output_file[k], "%-20s\t10.0\n", "SCREENING_HEIGHT");
-            fprintf(output_file[k], "%-7s\t", "YEAR");
-            fprintf(output_file[k], "%-7s\t", "DOY");
-            fprintf(output_file[k], "%-7s\t", "PP");
-            fprintf(output_file[k], "%-7s\t", "TX");
-            fprintf(output_file[k], "%-7s\t", "TN");
-            fprintf(output_file[k], "%-7s\t", "SOLAR");
-            fprintf(output_file[k], "%-7s\t", "RHX");
-            fprintf(output_file[k], "%-7s\t", "RHN");
-            fprintf(output_file[k], "%-7s\n", "WIND");
+            fprintf(output_file[kloc], "%-20s\t%-.2lf\n", "ALTITUDE",
+                -8200.0 * log(avg_pres[kloc] / 101325.0));
+            fprintf(output_file[kloc], "%-20s\t10.0\n", "SCREENING_HEIGHT");
+            fprintf(output_file[kloc], "%-7s\t", "YEAR");
+            fprintf(output_file[kloc], "%-7s\t", "DOY");
+            fprintf(output_file[kloc], "%-7s\t", "PP");
+            fprintf(output_file[kloc], "%-7s\t", "TX");
+            fprintf(output_file[kloc], "%-7s\t", "TN");
+            fprintf(output_file[kloc], "%-7s\t", "SOLAR");
+            fprintf(output_file[kloc], "%-7s\t", "RHX");
+            fprintf(output_file[kloc], "%-7s\t", "RHN");
+            fprintf(output_file[kloc], "%-7s\n", "WIND");
 
-            fseek(temp_file[k], 0, SEEK_SET);
+            fseek(temp_file[kloc], 0, SEEK_SET);
             cmdstr[0] = '\0';
-            NextLine(temp_file[k], cmdstr, &lno);
+            NextLine(temp_file[kloc], cmdstr, &lno);
 
             while (strcasecmp(cmdstr, "EOF") != 0)
             {
-                fprintf(output_file[k], "%s", cmdstr);
-                fflush(output_file[k]);
-                NextLine(temp_file[k], cmdstr, &lno);
+                fprintf(output_file[kloc], "%s", cmdstr);
+                fflush(output_file[kloc]);
+                NextLine(temp_file[kloc], cmdstr, &lno);
             }
 
-            fclose(temp_file[k]);
+            fclose(temp_file[kloc]);
         }
 
-        fclose(output_file[k]);
+        fclose(output_file[kloc]);
     }
 
     return EXIT_SUCCESS;

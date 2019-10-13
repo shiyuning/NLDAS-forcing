@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -O2 -Wall -Wextra -Wunused
+CFLAGS = -g -O2 -fopenmp -Wall -Wextra -Wunused
 
 SRCDIR = ./src
 LIBS = -lm
