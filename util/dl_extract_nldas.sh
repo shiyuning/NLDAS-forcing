@@ -37,13 +37,13 @@ do
     if [ $nof -ne $nof_avail ] ; then
         if [ "$operation" == "download" ] ; then
             echo "Downloading $(Jul $cyear $cjday) data..."
-            wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday &>/dev/null
+            wget --load-cookies $HOME/.urs_cookies --save-cookies $HOME/.urs_cookies --keep-session-cookies --no-check-certificate -r -c -nH -nd -np -A grb "https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/NLDAS_FORA0125_H.002/$cyear/$cjday/" -P Data/$cyear/$cjday &>/dev/null
         else
             echo "Interpreting $(Jul $cyear $cjday) data..."
             files=$(ls Data/$cyear/$cjday/NLDAS_FORA0125_H.A*.002*.grb | sort -d)
             for x in $files
               do
-                ./util/wgrib -v $x | egrep "(:APCP:|:SPFH:|:TMP:|:UGRD:|:VGRD:|:DLWRF:|:DSWRF:|:PRES:sfc:)" | ./util/wgrib -i -nh $x -o "$x.dat" &>/dev/null 
+                ./util/wgrib -v $x | egrep "(:APCP:|:SPFH:|:TMP:|:UGRD:|:VGRD:|:DLWRF:|:DSWRF:|:PRES:sfc:)" | ./util/wgrib -i -nh $x -o "$x.dat" &>/dev/null
             done
         fi
     fi
